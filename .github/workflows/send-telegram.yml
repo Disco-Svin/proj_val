@@ -1,0 +1,37 @@
+name: Send Telegram report
+
+on:
+  push:
+    paths:
+      - "reports/outbox.md"
+  workflow_dispatch:
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require GitHub secrets
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_USER_ID: ${{ secrets.TELEGRAM_USER_ID }}
+        run: |
+          missing=0
+          if [ -z "$TELEGRAM_BOT_TOKEN" ]; then
+            echo "GitHub Actions secret TELEGRAM_BOT_TOKEN is missing"
+            missing=1
+          fi
+          if [ -z "$TELEGRAM_USER_ID" ]; then
+            echo "GitHub Actions secret TELEGRAM_USER_ID is missing"
+            missing=1
+          fi
+          exit "$missing"
+
+      - name: Send report
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_USER_ID: ${{ secrets.TELEGRAM_USER_ID }}
+        run: |
+          test -s reports/outbox.md || { echo "reports/outbox.md is missing or empty"; exit 1; }
+          python3 -m telegram_notify send --file reports/outbox.md
